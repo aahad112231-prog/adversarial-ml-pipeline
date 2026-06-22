@@ -1,0 +1,36 @@
+﻿# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.Python
+build/
+dist/
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Data & model artifacts (don't bloat the repo)
+data/raw/
+data/processed/
+*.pt
+*.pth
+*.ckpt
+mlruns/
+mlflow.db
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env vars / secrets
+.env
+*.env
+
+# IDE
+.vscode/
+.idea/
