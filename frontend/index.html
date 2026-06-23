@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CIFAR-10 Classifier</title>
+    <style>
+        body {
+            font-family: -apple-system, sans-serif;
+            max-width: 600px;
+            margin: 60px auto;
+            padding: 20px;
+            text-align: center;
+        }
+        h1 { font-size: 1.5rem; }
+        #drop-zone {
+            border: 2px dashed #999;
+            border-radius: 12px;
+            padding: 40px;
+            cursor: pointer;
+            margin: 20px 0;
+        }
+        #drop-zone.dragover { border-color: #333; background: #f5f5f5; }
+        #preview { max-width: 200px; margin: 20px auto; display: none; border-radius: 8px; }
+        #result { margin-top: 20px; font-size: 1.1rem; }
+        .top3 { text-align: left; max-width: 300px; margin: 10px auto; }
+        .top3 div { display: flex; justify-content: space-between; padding: 4px 0; }
+    </style>
+</head>
+<body>
+    <h1>CIFAR-10 Image Classifier</h1>
+    <p>Upload an image (airplane, car, bird, cat, deer, dog, frog, horse, ship, or truck)</p>
+
+    <div id="drop-zone">
+        <p>Click to upload or drag an image here</p>
+        <input type="file" id="file-input" accept="image/*" style="display:none">
+    </div>
+
+    <img id="preview" alt="preview">
+    <div id="result"></div>
+
+    <script>
+        const API_URL = "http://localhost:8000";
+        const dropZone = document.getElementById("drop-zone");
+        const fileInput = document.getElementById("file-input");
+        const preview = document.getElementById("preview");
+        const result = document.getElementById("result");
+
+        dropZone.addEventListener("click", () => fileInput.click());
+
+        fileInput.addEventListener("change", (e) => {
+            if (e.target.files.length > 0) handleFile(e.target.files[0]);
+        });
+
+        dropZone.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            dropZone.classList.add("dragover");
+        });
+
+        dropZone.addEventListener("dragleave", () => {
+            dropZone.classList.remove("dragover");
+        });
+
+        dropZone.addEventListener("drop", (e) => {
+            e.preventDefault();
+            dropZone.classList.remove("dragover");
+            if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
+        });
+
+        async function handleFile(file) {
+            preview.src = URL.createObjectURL(file);
+            preview.style.display = "block";
+            result.innerHTML = "Classifying...";
+
+            const formData = new FormData();
+            formData.append("file", file);
+
+            try {
+                const response = await fetch(`${API_URL}/predict`, {
+                    method: "POST",
+                    body: formData,
+                });
+                const data = await response.json();
+
+                let html = `<strong>Prediction: ${data.predicted_class}</strong> (${(data.confidence * 100).toFixed(1)}%)`;
+                html += `<div class="top3">`;
+                data.top3.forEach(item => {
+                    html += `<div><span>${item.class}</span><span>${(item.confidence * 100).toFixed(1)}%</span></div>`;
+                });
+                html += `</div>`;
+                result.innerHTML = html;
+            } catch (err) {
+                result.innerHTML = "Error: could not reach the API. Is it running?";
+            }
+        }
+    </script>
+</body>
+</html>
