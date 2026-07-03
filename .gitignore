@@ -1,4 +1,4 @@
-﻿# Python
+# Python
 __pycache__/
 *.py[cod]
 *.egg-info/
@@ -17,8 +17,8 @@ env/
 # Data & model artifacts (don't bloat the repo)
 data/raw/
 data/processed/
-*.pt
-*.pth
+# *.pt -- specific checkpoints tracked below
+# *.pt -- specific checkpoints tracked belowh
 *.ckpt
 mlruns/
 mlflow.db
@@ -38,3 +38,7 @@ Thumbs.db
 data/
 
 data/
+
+# Allow named project checkpoints
+!baseline_cnn.pt
+!robust_cnn.pt
