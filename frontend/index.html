@@ -1,97 +1,232 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>CIFAR-10 Classifier</title>
-    <style>
-        body {
-            font-family: -apple-system, sans-serif;
-            max-width: 600px;
-            margin: 60px auto;
-            padding: 20px;
-            text-align: center;
-        }
-        h1 { font-size: 1.5rem; }
-        #drop-zone {
-            border: 2px dashed #999;
-            border-radius: 12px;
-            padding: 40px;
-            cursor: pointer;
-            margin: 20px 0;
-        }
-        #drop-zone.dragover { border-color: #333; background: #f5f5f5; }
-        #preview { max-width: 200px; margin: 20px auto; display: none; border-radius: 8px; }
-        #result { margin-top: 20px; font-size: 1.1rem; }
-        .top3 { text-align: left; max-width: 300px; margin: 10px auto; }
-        .top3 div { display: flex; justify-content: space-between; padding: 4px 0; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Adversarial ML Pipeline</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8f8f7; color: #1a1a18; min-height: 100vh; }
+.app { max-width: 900px; margin: 0 auto; padding: 2rem 1rem; }
+.header { margin-bottom: 2rem; }
+.header h1 { font-size: 22px; font-weight: 500; }
+.header p { font-size: 14px; color: #6b6b67; margin-top: 6px; line-height: 1.6; }
+.upload-zone { border: 1px dashed #ccc; border-radius: 12px; padding: 2.5rem; text-align: center; cursor: pointer; background: #fff; transition: all 0.15s; margin-bottom: 1rem; }
+.upload-zone:hover, .upload-zone.dragover { background: #f0f0ee; border-color: #3b82f6; }
+.upload-zone i { font-size: 32px; color: #aaa; display: block; margin-bottom: 12px; }
+.upload-zone p { font-size: 14px; color: #555; }
+.upload-zone span { font-size: 12px; color: #999; }
+.epsilon-row { display: flex; align-items: center; gap: 12px; margin-bottom: 1rem; padding: 1rem 1.25rem; background: #fff; border-radius: 8px; border: 1px solid #e5e5e3; }
+.epsilon-row label { font-size: 13px; color: #666; white-space: nowrap; }
+.epsilon-row input[type=range] { flex: 1; }
+.epsilon-val { font-size: 13px; font-weight: 500; min-width: 36px; }
+.analyze-btn { width: 100%; padding: 11px; font-size: 14px; border-radius: 8px; background: #2563eb; color: #fff; border: none; cursor: pointer; margin-bottom: 2rem; }
+.analyze-btn:hover { background: #1d4ed8; }
+.analyze-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.section-label { font-size: 11px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: #999; margin-bottom: 12px; }
+.images-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 2rem; }
+.img-card { background: #fff; border: 1px solid #e5e5e3; border-radius: 12px; padding: 12px; text-align: center; }
+.img-card img { width: 100%; border-radius: 6px; display: block; margin-bottom: 8px; image-rendering: pixelated; }
+.img-card .img-label { font-size: 12px; color: #888; }
+.preds-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 2rem; }
+.pred-card { background: #fff; border: 1px solid #e5e5e3; border-radius: 12px; padding: 1rem 1.25rem; }
+.pred-card .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; padding: 2px 8px; border-radius: 999px; margin-bottom: 10px; }
+.badge-clean { background: #dcfce7; color: #166534; }
+.badge-attacked { background: #fee2e2; color: #991b1b; }
+.badge-defended { background: #dcfce7; color: #166534; }
+.badge-robust { background: #dbeafe; color: #1e40af; }
+.pred-card.attacked { border-color: #fca5a5; }
+.pred-card.attacked .pred-class { color: #dc2626; }
+.pred-card.defended { border-color: #86efac; }
+.pred-card.defended .pred-class { color: #16a34a; }
+.pred-class { font-size: 20px; font-weight: 500; margin-bottom: 4px; }
+.pred-conf { font-size: 13px; color: #888; margin-bottom: 10px; }
+.top3 { display: flex; flex-direction: column; gap: 5px; }
+.top3-row { display: flex; align-items: center; font-size: 12px; gap: 6px; }
+.top3-row .t3-name { color: #555; width: 80px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar-wrap { flex: 1; background: #f0f0ee; border-radius: 2px; height: 4px; overflow: hidden; }
+.bar { height: 4px; border-radius: 2px; background: #3b82f6; }
+.t3-pct { font-size: 12px; color: #999; min-width: 36px; text-align: right; }
+.summary-card { background: #fff; border: 1px solid #e5e5e3; border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 2rem; }
+.summary-card p { font-size: 13px; color: #555; line-height: 1.7; }
+.loading { text-align: center; padding: 2rem; color: #999; font-size: 14px; display: none; }
+.loading.visible { display: block; }
+.error-msg { color: #dc2626; font-size: 13px; padding: 10px 14px; background: #fee2e2; border-radius: 8px; margin-bottom: 1rem; display: none; }
+.error-msg.visible { display: block; }
+.results { display: none; }
+.results.visible { display: block; }
+</style>
 </head>
 <body>
-    <h1>CIFAR-10 Image Classifier</h1>
-    <p>Upload an image (airplane, car, bird, cat, deer, dog, frog, horse, ship, or truck)</p>
+<div class="app">
+  <div class="header">
+    <h1>Adversarial ML Pipeline</h1>
+    <p>Upload an image to see how a trained CIFAR-10 classifier behaves under adversarial attack — and how defenses respond.</p>
+  </div>
 
-    <div id="drop-zone">
-        <p>Click to upload or drag an image here</p>
-        <input type="file" id="file-input" accept="image/*" style="display:none">
+  <div class="upload-zone" id="drop-zone">
+    <i class="ti ti-upload"></i>
+    <p>Click to upload or drag an image here</p>
+    <span>Best results: airplane, car, bird, cat, deer, dog, frog, horse, ship, truck</span>
+    <input type="file" id="file-input" accept="image/*" style="display:none">
+  </div>
+
+  <div class="epsilon-row">
+    <label for="epsilon-slider">Attack strength (ε)</label>
+    <input type="range" id="epsilon-slider" min="0.01" max="0.15" step="0.01" value="0.03">
+    <span class="epsilon-val" id="epsilon-display">0.03</span>
+  </div>
+
+  <div class="error-msg" id="error-msg"></div>
+
+  <button class="analyze-btn" id="analyze-btn" disabled>Analyze image</button>
+
+  <div class="loading" id="loading">Running pipeline — clean prediction → FGSM attack → defenses…</div>
+
+  <div class="results" id="results">
+    <p class="section-label">Images</p>
+    <div class="images-grid">
+      <div class="img-card"><img id="img-clean" src="" alt="clean"><div class="img-label">Clean input</div></div>
+      <div class="img-card"><img id="img-adv" src="" alt="adversarial"><div class="img-label">After FGSM attack</div></div>
+      <div class="img-card"><img id="img-pert" src="" alt="perturbation"><div class="img-label">Perturbation (amplified)</div></div>
+      <div class="img-card"><img id="img-san" src="" alt="sanitized"><div class="img-label">After JPEG sanitization</div></div>
     </div>
 
-    <img id="preview" alt="preview">
-    <div id="result"></div>
+    <p class="section-label">Predictions</p>
+    <div class="preds-grid">
+      <div class="pred-card">
+        <div class="badge badge-clean">✓ Baseline — clean</div>
+        <div class="pred-class" id="pred-clean-class">—</div>
+        <div class="pred-conf" id="pred-clean-conf">—</div>
+        <div class="top3" id="top3-clean"></div>
+      </div>
+      <div class="pred-card attacked">
+        <div class="badge badge-attacked">⚠ Baseline — under attack</div>
+        <div class="pred-class" id="pred-adv-class">—</div>
+        <div class="pred-conf" id="pred-adv-conf">—</div>
+        <div class="top3" id="top3-adv"></div>
+      </div>
+      <div class="pred-card defended">
+        <div class="badge badge-defended">✓ JPEG sanitization</div>
+        <div class="pred-class" id="pred-san-class">—</div>
+        <div class="pred-conf" id="pred-san-conf">—</div>
+        <div class="top3" id="top3-san"></div>
+      </div>
+      <div class="pred-card defended">
+        <div class="badge badge-robust">✓ Adversarially trained</div>
+        <div class="pred-class" id="pred-robust-class">—</div>
+        <div class="pred-conf" id="pred-robust-conf">—</div>
+        <div class="top3" id="top3-robust"></div>
+      </div>
+    </div>
 
-    <script>
-        const API_URL = "http://localhost:8000";
-        const dropZone = document.getElementById("drop-zone");
-        const fileInput = document.getElementById("file-input");
-        const preview = document.getElementById("preview");
-        const result = document.getElementById("result");
+    <div class="summary-card">
+      <p id="summary-text"></p>
+    </div>
+  </div>
+</div>
 
-        dropZone.addEventListener("click", () => fileInput.click());
+<script>
+const API = 'http://localhost:8000';
+let selectedFile = null;
 
-        fileInput.addEventListener("change", (e) => {
-            if (e.target.files.length > 0) handleFile(e.target.files[0]);
-        });
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+const analyzeBtn = document.getElementById('analyze-btn');
+const epsilonSlider = document.getElementById('epsilon-slider');
+const epsilonDisplay = document.getElementById('epsilon-display');
+const loading = document.getElementById('loading');
+const results = document.getElementById('results');
+const errorMsg = document.getElementById('error-msg');
 
-        dropZone.addEventListener("dragover", (e) => {
-            e.preventDefault();
-            dropZone.classList.add("dragover");
-        });
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('dragover');
+  if (e.dataTransfer.files[0]) selectFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', e => { if (e.target.files[0]) selectFile(e.target.files[0]); });
+epsilonSlider.addEventListener('input', () => {
+  epsilonDisplay.textContent = parseFloat(epsilonSlider.value).toFixed(2);
+});
 
-        dropZone.addEventListener("dragleave", () => {
-            dropZone.classList.remove("dragover");
-        });
+function selectFile(file) {
+  selectedFile = file;
+  analyzeBtn.disabled = false;
+  dropZone.querySelector('p').textContent = 'Selected: ' + file.name;
+}
 
-        dropZone.addEventListener("drop", (e) => {
-            e.preventDefault();
-            dropZone.classList.remove("dragover");
-            if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
-        });
+function renderTop3(containerId, top3) {
+  const c = document.getElementById(containerId);
+  c.innerHTML = '';
+  top3.forEach(item => {
+    const pct = (item.confidence * 100).toFixed(1);
+    c.innerHTML += '<div class="top3-row"><span class="t3-name">' + item.class + '</span><div class="bar-wrap"><div class="bar" style="width:' + pct + '%"></div></div><span class="t3-pct">' + pct + '%</span></div>';
+  });
+}
 
-        async function handleFile(file) {
-            preview.src = URL.createObjectURL(file);
-            preview.style.display = "block";
-            result.innerHTML = "Classifying...";
+function buildSummary(data) {
+  const p = data.predictions;
+  const cleanClass = p.clean.class;
+  const advClass = p.adversarial.class;
+  const sanClass = p.sanitized.class;
+  const robustClass = p.robust.class;
+  const attacked = advClass !== cleanClass;
+  const sanOk = sanClass === cleanClass;
+  const robustOk = robustClass === cleanClass;
+  let txt = 'The baseline model identified the image as "' + cleanClass + '" with ' + (p.clean.confidence*100).toFixed(1) + '% confidence. ';
+  txt += attacked ? 'After FGSM attack (ε=' + data.epsilon + '), it misclassified the image as "' + advClass + '" — the attack succeeded. ' : 'The FGSM attack failed to flip the prediction. ';
+  txt += sanOk ? 'JPEG sanitization recovered the correct answer ("' + sanClass + '") by stripping the adversarial perturbation. ' : 'JPEG sanitization could not fully recover — the model predicted "' + sanClass + '" after sanitization. ';
+  txt += robustOk ? 'The adversarially trained model correctly resisted the attack, predicting "' + robustClass + '" with ' + (p.robust.confidence*100).toFixed(1) + '% confidence.' : 'The adversarially trained model also misclassified as "' + robustClass + '" — the attack overcame the defense.';
+  document.getElementById('summary-text').textContent = txt;
+}
 
-            const formData = new FormData();
-            formData.append("file", file);
+analyzeBtn.addEventListener('click', async () => {
+  if (!selectedFile) return;
+  errorMsg.classList.remove('visible');
+  results.classList.remove('visible');
+  loading.classList.add('visible');
+  analyzeBtn.disabled = true;
 
-            try {
-                const response = await fetch(`${API_URL}/predict`, {
-                    method: "POST",
-                    body: formData,
-                });
-                const data = await response.json();
+  try {
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+    const epsilon = parseFloat(epsilonSlider.value);
+    const res = await fetch(API + '/analyze?epsilon=' + epsilon, { method: 'POST', body: formData });
+    if (!res.ok) throw new Error('API error: ' + res.status);
+    const data = await res.json();
 
-                let html = `<strong>Prediction: ${data.predicted_class}</strong> (${(data.confidence * 100).toFixed(1)}%)`;
-                html += `<div class="top3">`;
-                data.top3.forEach(item => {
-                    html += `<div><span>${item.class}</span><span>${(item.confidence * 100).toFixed(1)}%</span></div>`;
-                });
-                html += `</div>`;
-                result.innerHTML = html;
-            } catch (err) {
-                result.innerHTML = "Error: could not reach the API. Is it running?";
-            }
-        }
-    </script>
+    document.getElementById('img-clean').src = 'data:image/png;base64,' + data.images.clean;
+    document.getElementById('img-adv').src = 'data:image/png;base64,' + data.images.adversarial;
+    document.getElementById('img-pert').src = 'data:image/png;base64,' + data.images.perturbation;
+    document.getElementById('img-san').src = 'data:image/png;base64,' + data.images.sanitized;
+
+    const p = data.predictions;
+    document.getElementById('pred-clean-class').textContent = p.clean.class;
+    document.getElementById('pred-clean-conf').textContent = (p.clean.confidence*100).toFixed(1) + '% confidence';
+    renderTop3('top3-clean', p.clean.top3);
+    document.getElementById('pred-adv-class').textContent = p.adversarial.class;
+    document.getElementById('pred-adv-conf').textContent = (p.adversarial.confidence*100).toFixed(1) + '% confidence';
+    renderTop3('top3-adv', p.adversarial.top3);
+    document.getElementById('pred-san-class').textContent = p.sanitized.class;
+    document.getElementById('pred-san-conf').textContent = (p.sanitized.confidence*100).toFixed(1) + '% confidence';
+    renderTop3('top3-san', p.sanitized.top3);
+    document.getElementById('pred-robust-class').textContent = p.robust.class;
+    document.getElementById('pred-robust-conf').textContent = (p.robust.confidence*100).toFixed(1) + '% confidence';
+    renderTop3('top3-robust', p.robust.top3);
+
+    buildSummary(data);
+    results.classList.add('visible');
+  } catch(err) {
+    errorMsg.textContent = 'Could not reach the API. Make sure the Docker container is running on port 8000. (' + err.message + ')';
+    errorMsg.classList.add('visible');
+  } finally {
+    loading.classList.remove('visible');
+    analyzeBtn.disabled = false;
+  }
+});
+</script>
 </body>
 </html>
