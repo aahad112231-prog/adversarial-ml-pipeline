@@ -1,0 +1,35 @@
+﻿name: Robustness Gate
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  robustness-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install torch torchvision numpy pillow mlflow fastapi uvicorn pydantic pytest
+
+      - name: Download CIFAR-10 dataset
+        run: python -c "from torchvision.datasets import CIFAR10; CIFAR10('./data', download=True)"
+
+      - name: Run robustness gate on baseline model
+        run: |
+          echo 'Baseline model expected to FAIL robustness gate'
+          python -m tests.test_robustness --model baseline_cnn.pt || true
+
+      - name: Run robustness gate on robust model
+        run: python -m tests.test_robustness --model robust_cnn.pt
